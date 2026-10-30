@@ -8,7 +8,14 @@ int main(int ac , char **av)
         << std::endl;
         return (1);
     }
-    RPN exercize(av[1]);
-
+    try
+    {
+        RPN exercize(av[1]);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
     return (0);
 }

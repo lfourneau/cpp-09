@@ -43,12 +43,6 @@ class RPN
     void    find_solution(std::string val);
     int     find_type(char &val);
     void    calculate(char const &val);
-//        void    parse_input(std::string av);
-//        void    check_number(std::string test);
-//        void    check_operator(char const &oper);
-//        void    calculate_result();
-//        double  transform_to_double(std::string &val);
-//        void    isnum(std::string const &val);
 };
 
 #endif
