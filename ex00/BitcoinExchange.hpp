@@ -9,6 +9,7 @@
 # include <sstream>
 # include <fstream>
 # include <ctime>
+# include <algorithm>
 # define BIGGEST_VALUATION 1000
 # define DATABASEREFERENCE "data.csv"
 
@@ -54,25 +55,34 @@ class BitcoinExchange
     };
     class  InvalidDateFormat: public std::exception 
     {
+        private:
+        std::string _date;
         public:
+        InvalidDateFormat(std::string date) : _date("bad input => " + date) {};
+        virtual ~InvalidDateFormat() throw() {};
         virtual const char *what() const throw()
         {
-           return "bad input.";
+           return (_date.c_str());
         }
     };
     
     private:
     void parse_input(char symbol);
     void check_files(char **av);
-    void output_bitcoin_value(std::string const &date, double const &value);
-    void check_valid_date(std::string const &date);
+    void output_bitcoin_value(double const &date, double const &value);
+    void transform_date(std::string date, double &val);
     void check_valid_value(double const &value);
     void trim(std::string &line);
-    std::map<std::string, double>::iterator check_date_database(std::string date);
+    std::map<double, double>::iterator \
+    find_date_database(double date);
+    std::string get_date_string(double date);
     //void find_value_portfolio(std::string const &request);
+    double transform_to_double(std::string val);
+    void open_file_stream(std::ifstream &val, char const *str);
+    bool    isvaliddate(int const &year, int const &month, int const &day);
     std::string _input_file;
     std::string _database;
-    std::map<std::string, double> _mapping;
+    std::map<double, double> _mapping;
     BitcoinExchange() {};
 };
 

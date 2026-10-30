@@ -2,21 +2,11 @@
 
 BitcoinExchange::BitcoinExchange(char **av, std::string database) : _database(database)
 {
-    try
-    {
-        std::cout << std::setprecision(10);
-        parse_input(',');
-        std::cout << "The database is healthy" << std::endl;
-        //revoir pour pas qu'une erreure fasse tout planter
-        check_files(av);
-        this->_input_file = av[0];
-        parse_input('|');
-    }
-    catch (std::exception &error)
-    {
-        std::cout << "Error: " << error.what() << std::endl;
-        return;
-    }
+    std::cout << std::setprecision(10);
+    parse_input(',');
+    check_files(av);
+    this->_input_file = av[0];
+    parse_input('|');
 }
 
 BitcoinExchange::BitcoinExchange(const BitcoinExchange &other) : _input_file(other._input_file), \
@@ -56,16 +46,24 @@ void BitcoinExchange::check_files(char **av)
     }
 }
 
+void BitcoinExchange::open_file_stream(std::ifstream &val, char const *str)
+{
+    if (val.is_open())
+        val.close();
+    val.clear();
+    val.open(str);
+    if (!val.is_open())
+        throw NoFile();
+}
+
 void BitcoinExchange::parse_input(char symbol)
 {
     std::ifstream file;
-    if (symbol == ',')
-        file = static_cast<std::ifstream>(_database.c_str());
-    else 
-        file = static_cast<std::ifstream>(_input_file.c_str());
 
-    if (!file.is_open())
-        throw (NoFile());
+    if (symbol == ',')
+        open_file_stream(file, _database.c_str());
+    else 
+        open_file_stream(file, _input_file.c_str());
 
     std::string line;
     std::string date;
@@ -77,72 +75,125 @@ void BitcoinExchange::parse_input(char symbol)
     {
         std::stringstream current_line(line);
         getline(current_line, date, symbol);
+
+        double date_to_double;
         try
         {
-            check_valid_date(date);
+            transform_date(date, date_to_double);
             getline(current_line, value, symbol);
-            value_dob = stod(value);
+            value_dob = transform_to_double(value);
             if (symbol == '|')
                 check_valid_value(value_dob);
+            if (symbol == ',')
+            {
+                this->_mapping[date_to_double] = value_dob;
+            }
+            else
+            {
+                trim(date);
+                output_bitcoin_value(date_to_double, value_dob);
+            }   
         }
         catch(const std::exception& e)
         {
             std::cerr << "Error: " << e.what() << '\n';
             continue;
         }
-        if (symbol == ',')
-            this->_mapping.insert({date, value_dob});
-        else
-        {
-            trim(date);
-            output_bitcoin_value(date, value_dob);
-        }
     }
     file.close();
 }
 
-void    BitcoinExchange::output_bitcoin_value(std::string const &date, double const &value)
+double BitcoinExchange::transform_to_double(std::string val)
 {
-    std::map<std::string, double>::iterator node;
+    std::istringstream str(val);
+    double exit_val;
 
-    try
-    {
-        node = check_date_database(date);
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << "Error: " << e.what() << " => " << date << std::endl;
-        return;
-    }
-    try
-    {
-        check_valid_value(value);
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << "Error: " << e.what() << '\n';
-    }
-    std::cout << date << " => " << value << " = " << static_cast<double>(value * node->second) << std::endl; 
+    str >> exit_val; 
+    return (exit_val);
 }
 
-std::map<std::string, double>::iterator   BitcoinExchange::check_date_database(std::string date)
+std::string BitcoinExchange::get_date_string(double val)
 {
-    std::map<std::string, double>::iterator node;
-    node = this->_mapping.find(date);
-    if (node == this->_mapping.end())
-        throw(InvalidDateFormat());
-    return (node);
+    std::stringstream output;
+
+    int year;
+    int month;
+    int day;
+
+    year = val / (31*12);
+    month = (val - year * 31 * 12) / 31;
+    day = val - year * 31 * 12 - month * 31;
+    output << year << "-" ;
+    if (month < 9)
+        output << "0";
+    output << month << "-" ;
+    if (day < 10)
+        output << "0";
+    output << day;
+    return (output.str());
 }
 
-void    BitcoinExchange::check_valid_date(std::string const &date)
+void    BitcoinExchange::output_bitcoin_value(double const &date, double const &value)
 {
-    std::string const date_format = "%Y-%m-%d";
-    tm tmStruct;
-    std::istringstream ss(date);
-    ss >> std::get_time(&tmStruct, date_format.c_str()); 
-    
-    if (ss.fail())
-        throw (InvalidDateFormat());
+    std::map<double, double>::iterator node;
+
+    node = find_date_database(date);
+    check_valid_value(value);
+    std::cout << get_date_string(date) << " => " << value << " = " \
+    << static_cast<double>(value * node->second) << std::endl; 
+}
+
+std::map<double, double>::iterator   BitcoinExchange::find_date_database(double date)
+{
+    std::map<double, double>::iterator node;
+    double save_date = date;
+
+    while (true)
+    {
+        node = this->_mapping.find(date);
+        if (node != this->_mapping.end())
+            return (node);
+        date--;
+        if (date <= 0)
+            throw (InvalidDateFormat(get_date_string(save_date)));
+    }
+}
+
+void    BitcoinExchange::transform_date(std::string date, double &val)
+{
+    std::string copy_date = date;
+    std::replace(date.begin(), date.end(), '-', ' ');
+    std::istringstream store(date);
+    double year;
+    double month;
+    double day;
+    double test;
+
+    if (!(store >> year >> month >> day && !(store >> test)))
+        throw(InvalidDateFormat(copy_date));
+    if (isvaliddate(year, month, day))
+        throw(InvalidDateFormat(copy_date));
+    val = day + month * 31 + year * 31 * 12;
+
+}
+
+bool    BitcoinExchange::isvaliddate(int const &year, int const &month, int const &day)
+{
+    bool is_leap;
+
+    if (month > 12 || month < 1)
+        return (true);
+    if (day < 1 || day > 31)
+        return (true);
+    if ((month == 4 || month == 6 || month == 9 || month == 11) && day == 31)
+        return (true);
+    if (month == 2)
+    {
+        is_leap = (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0);
+        if (day > (is_leap ? 29 : 28))
+            return (true);
+    }
+    return (false);
 }
 
 void    BitcoinExchange::check_valid_value(double const &value)
@@ -165,32 +216,9 @@ void BitcoinExchange::trim(std::string &line)
     std::string::size_type start = line.find_first_not_of(ws);
     if (start == std::string::npos)
     {
-        line.clear();          // only whitespace
+        line.clear();         
         return;
     }
     std::string::size_type end = line.find_last_not_of(ws);
     line = line.substr(start, end - start + 1);
 }
-
-//void    BitcoinExchange::find_value_portfolio(std::string const &request)
-//{
-//    std::stringstream   to_analyse(request);
-//    std::string         date;
-//    std::string         value;
-//    std::map<std::string, double> it;
-//
-//    try
-//    {
-//        getline(to_analyse, date, ',');
-//        check_valid_date(date);
-//        getline(to_analyse, value, ',');
-//        check_valid_value(stod(value));
-//    }
-//    catch(const std::exception& e)
-//    {
-//        std::cerr << e.what() << '\n';
-//    }
-//
-//    if (this->_mapping.find(date) ;
-//    
-//}
