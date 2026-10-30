@@ -2,76 +2,53 @@
 # define RPN_HPP
 
 # include <iostream>
+# include <ostream>
 # include <algorithm>
-# include <list>
+# include <deque>
 # include <exception>
 # include <sstream>
 # include <functional>
+# include <cstdio>
 
-class Node
+enum test
 {
-    public:
-        Node(double value = 0, char operand = '+');
-        Node(Node const &other);
-        Node &operator=(Node const &other);
-        ~Node();
-        void    setNumber(double const &val);
-        void    setSign(char const &val);
-        double const &getNumber() const;
-        char const  &getSign() const;
-    private:
-        double     number;
-        char    sign;
+    NUMBER,
+    SIGN,
+    OTHER,
 };
 
 class RPN
 {
     public:
-        RPN(char **av);
+        RPN(char *av);
         RPN(RPN const &other);
         RPN &operator=(RPN const &other);
         ~RPN();
-        class NotCorrectArguments : public std::exception
+        class RPNErr : public std::exception
         {
             public:
                 virtual const char *what() const throw()
                 {
-                    return "this program only accepts one parameter";
+                    return reason.c_str();
                 }
-        };
-        class ValueOverTen : public std::exception
-        {
-            public:
-                virtual const char *what() const throw()
-                {
-                    return "values can not be over 10";
-                }
-        };
-        class IncorrectOperand : public std::exception
-        {
-            public:
-                virtual const char *what() const throw()
-                {
-                    return "using a non supported opperand";
-                }
-        };
-        class IncorrectNumber : public std::exception
-        {
-            public:
-                virtual const char *what() const throw()
-                {
-                    return "a non number has been used";
-                }
-        };   
-        private:
-        RPN(){};
-        std::list<Node> list;
-        std::string content;
-        void    check_one_arg(char **av);
-        void    parse_input(std::string av);
-        void    check_number(std::string test);
-        void    check_operator(char const &oper);
-        void    calculate_result();
+            RPNErr(std::string const val) : reason(val) {};
+            virtual ~RPNErr() throw() {};
+            private:
+            std::string const reason;
+        }; 
+    private:
+    RPN(){};
+    std::deque<double> digits;
+    std::string content;
+    void    find_solution(std::string val);
+    int     find_type(char &val);
+    void    calculate(char const &val);
+//        void    parse_input(std::string av);
+//        void    check_number(std::string test);
+//        void    check_operator(char const &oper);
+//        void    calculate_result();
+//        double  transform_to_double(std::string &val);
+//        void    isnum(std::string const &val);
 };
 
 #endif
