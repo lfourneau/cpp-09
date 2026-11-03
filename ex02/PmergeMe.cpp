@@ -1,23 +1,27 @@
 #include "PmergeMe.hpp"
 
 template <typename T>
-PmergeMe<T>::PmergeMe(char **av, std::string const stl) : stl(stl), odd(false), straggler(0), total_pairs(0)
+PmergeMe<T>::PmergeMe(char **av, std::string const val) : type(val), odd(false), straggler(0), total_pairs(0)
 {
-    //parsing
-    parse_input(av);
-
-    //creation des 2 tests
-
-    add_stl(this->values);
-    sort();
-    insert_good_order();
-    show_sorted(this->values.begin(), this->values.end());
-    //show_sorted(this->values_deque.begin(), this->values_deque.end());
+    try
+    {
+        parse_input(av);
+        add_stl(this->values);
+        get_time_start();
+        sort();
+        insert_good_order();
+        gettimeofday(&this->end_time, NULL);
+        show_sorted(this->values.begin(), this->values.end());
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
 }
 
 template <typename T>
 PmergeMe<T>::PmergeMe(const PmergeMe &other)
-    : stl(other.stl), values(other.values), av_to_nb(other.av_to_nb),
+    : type(other.type), values(other.values), av_to_nb(other.av_to_nb),
       odd(other.odd), straggler(other.straggler), total_pairs(other.total_pairs)
 {
 }
@@ -42,31 +46,27 @@ PmergeMe<T>::~PmergeMe()
 
 }
 
+template<typename T>
+void    PmergeMe<T>::get_time_start()
+{
+    gettimeofday(&this->time, NULL);
+}
+
 template <typename T>
 void    PmergeMe<T>::parse_input(char **av)
 {
     long val;
     std::string to_str;
 
-    try
+    while (*av != NULL)
     {
-        std::cout << "Before : ";
-        while (*av != NULL)
-        {
-            to_str = *av;
-            check_validity_numbers(to_str, val);
-            std::cout << val << " ";
-            av_to_nb.push_back(val);
-            ++av;
-        }
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << e.what() << '\n';
+        to_str = *av;
+        check_validity_numbers(to_str, val);
+        av_to_nb.push_back(val);
+        ++av;
     }
     odd = av_to_nb.size() % 2;
     total_pairs = av_to_nb.size() / 2;
-    std::cout << std::endl;
 }
 
 template <typename T>
@@ -122,16 +122,27 @@ void    PmergeMe<T>::check_validity_numbers(std::string const &val, long& exp)
 template <typename T>
 void    PmergeMe<T>::show_sorted(typename T::iterator it, typename T::iterator end)
 {
-    std::cout << "After : " ;
-    for (; it != end; it++)
+    unsigned int i = 0;
+    if (type == "std::vector")
     {
-        std::cout << (*it).first << " ";
+        std::cout << "After : " ;
+        for (; it != end; it++)
+        {
+            if (i < 5)
+                std::cout << (*it).first << " ";
+            if (i == 5)
+                std::cout << " [..] ";
+            i++;
+        }
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
+    unsigned int total_time = (end_time.tv_sec - time.tv_sec) * 1000000 + (end_time.tv_usec - time.tv_usec);
+    std::cout << "Time to process a range of " << values.size() << " elements with " << type << " : ";
+    std::cout << total_time << "us" << std::endl;
 }
 
-template <typename T>
-void PmergeMe<T>::merge(unsigned int left, unsigned int middle, unsigned int right)
+template <>
+void PmergeMe<std::vector<std::pair<long, long> > >::merge(unsigned int left, unsigned int middle, unsigned int right)
 {
     unsigned int    i, j, k;
     std::vector<std::pair<long, long> > left_vec;
@@ -173,6 +184,56 @@ void PmergeMe<T>::merge(unsigned int left, unsigned int middle, unsigned int rig
     }
 }
 
+template <>
+void    PmergeMe<std::vector<std::pair<long, long> > >::merge_main_chain(long value_to_insert, unsigned int zone)
+{
+    unsigned int pos = 0;
+    unsigned int gap = zone;
+    unsigned int half;
+
+    while (gap > 0)
+    {
+        half = gap / 2;
+        if (value_to_insert < this->values[pos + half].first)
+            gap = half;
+        else
+        {
+            pos += half + 1;
+            gap -= half + 1;
+        }
+    }
+    this->values.insert(this->values.begin() + pos, std::make_pair(value_to_insert, -1L));
+}
+
+template <>
+void    PmergeMe<std::vector<std::pair<long, long> > >::insert_good_order()
+{
+    unsigned int current_index = 2;
+    unsigned int previous = 0;
+    unsigned int current_jacob_val = 1;
+    std::vector<long> output;
+    std::vector<std::pair<long, long> > copy;
+    int i;
+
+    if (total_pairs > 0)
+    {
+        this->values.insert(this->values.begin(), std::make_pair(this->values[0].second, -1L));
+        copy = this->values;
+        while (current_jacob_val < total_pairs)
+        {
+            output = list_index(current_index, previous, current_jacob_val);
+            i = 0;
+            while (output[i] != -1)
+            {
+                merge_main_chain(copy[output[i]].second, previous + current_jacob_val - 1);
+                i++;
+            }
+        }
+    }
+    if (odd == true)
+        merge_main_chain(straggler, this->values.size());
+}
+
 template <typename T>
 template <typename U>
 std::pair<long, long> &PmergeMe<T>::get_list_iterator(U &list, unsigned int node)
@@ -180,70 +241,112 @@ std::pair<long, long> &PmergeMe<T>::get_list_iterator(U &list, unsigned int node
     typename U::iterator it = list.begin();
     unsigned int i = 0;
 
-    while (i < node)
+    while (i < node && it != list.end())
     {
-        if (it == list.end())
-            throw(InvalidInputNotNumber("iterator out of range"));
         it++;
         i++;
     }
+    if (it == list.end())
+        throw(InvalidInputNotNumber("iterator out of range"));
     return (*it);
 }
 
-template <typename T>
-void PmergeMe<T>::merge_list(unsigned int left, unsigned int middle, unsigned int right)
+template <>
+void PmergeMe<std::list<std::pair<long, long> > >::merge(unsigned int left, unsigned int middle, unsigned int right)
 {
-    unsigned int    i, j, k;
-    std::list<std::pair<long, long> > left_list;
-    std::list<std::pair<long, long> > right_list;
-    unsigned int    total_right = right - middle;
-    unsigned int    total_left = middle - left + 1;
+    typedef std::list<std::pair<long, long> > List;
 
-    for (i = 0; i < total_left; i++)
-        left_list.push_back(get_list_iterator(this->values, left + i));
-    for (i = 0; i < total_right; i++)
-        right_list.push_back(get_list_iterator(this->values, middle + 1 + i));
+    List::iterator start = this->values.begin();
+    std::advance(start, left);
+    List::iterator mid = start;
+    std::advance(mid, middle - left + 1);
+    List::iterator stop = mid;
+    std::advance(stop, right - middle);
 
-    i = j = k = 0;
-    while(i < total_left && j < total_right)
+    List left_list(start, mid);
+    List right_list(mid, stop);
+
+    List::iterator l = left_list.begin();
+    List::iterator r = right_list.begin();
+    List::iterator out = start;
+
+    while (l != left_list.end() && r != right_list.end())
     {
-        if (get_list_iterator(left_list, i).first <= get_list_iterator(right_list, j).first)
+        if (l->first <= r->first)
+            *out++ = *l++;
+        else
+            *out++ = *r++;
+    }
+    while (l != left_list.end())
+        *out++ = *l++;
+    while (r != right_list.end())
+        *out++ = *r++;
+}
+
+template <>
+void    PmergeMe<std::list<std::pair<long, long> > >::merge_main_chain(long value_to_insert, unsigned int zone)
+{
+    std::list<std::pair<long, long> >::iterator base = this->values.begin();
+    std::list<std::pair<long, long> >::iterator probe;
+    unsigned int gap = zone;
+    unsigned int half;
+
+    while (gap > 0)
+    {
+        half = gap / 2;
+        probe = base;
+        std::advance(probe, half);
+        if (value_to_insert < probe->first)
+            gap = half;
+        else
         {
-            get_list_iterator(this->values, left + k) = get_list_iterator(left_list, i);
-            i++;
+            base = ++probe;
+            gap -= half + 1;
         }
-        else 
+    }
+    this->values.insert(base, std::make_pair(value_to_insert, -1L));
+}
+
+template <>
+void    PmergeMe<std::list<std::pair<long, long> > >::insert_good_order()
+{
+    unsigned int current_index = 2;
+    unsigned int previous = 0;
+    unsigned int current_jacob_val = 1;
+    std::vector<long> output;
+    std::list<std::pair<long, long> > copy;
+    int i;
+
+    if (total_pairs > 0)
+    {
+        this->values.insert(this->values.begin(), std::make_pair(this->values.front().second, -1L));
+        copy = this->values;
+        while (current_jacob_val < total_pairs)
         {
-            get_list_iterator(this->values, left + k) = get_list_iterator(right_list, j);
-            j++;
+            output = list_index(current_index, previous, current_jacob_val);
+            i = 0;
+            while (output[i] != -1)
+            {
+                merge_main_chain(get_list_iterator(copy, output[i]).second, previous + current_jacob_val - 1);
+                i++;
+            }
         }
-        k++;
     }
-    while (i < total_left)
-    {
-        get_list_iterator(this->values, left + k) = get_list_iterator(left_list, i);
-        i++;
-        k++;
-    }
-    while (j < total_right)
-    {
-        get_list_iterator(this->values, left + k)  = get_list_iterator(right_list, j);
-        j++;
-        k++;
-    }
+    if (odd == true)
+        merge_main_chain(straggler, this->values.size());
 }
 
 template <typename T>
-void PmergeMe<T>::merge_sort(unsigned int left, unsigned int right, void (PmergeMe<T>::*func)(unsigned int, unsigned int, unsigned int))
+void PmergeMe<T>::merge_sort(unsigned int left, unsigned int right)
 {
     unsigned int    middle;
 
     if (left < right)
     {
-        middle = left + (right - left) / 2;       
-        merge_sort(left, middle, func);
-        merge_sort(middle + 1, right, func);
-        (this->*func)(left, middle, right);
+        middle = left + (right - left) / 2;
+        merge_sort(left, middle);
+        merge_sort(middle + 1, right);
+        merge(left, middle, right);
     }
 }
 
@@ -255,10 +358,7 @@ void PmergeMe<T>::sort()
     i = this->values.size();
     if (i < 2)
         return ;
-    if (stl == "std::vector")
-        merge_sort(0, i - 1, &PmergeMe<T>::merge);
-    else if (stl == "std::list")
-        merge_sort(0, i - 1, &PmergeMe<T>::merge_list);
+    merge_sort(0, i - 1);
 }
 
 template <typename T>
@@ -288,55 +388,5 @@ unsigned int PmergeMe<T>::jacobstahl(unsigned int current_index) const
     return ((pow(2, current_index) - pow(-1, current_index)) / 3);
 }
 
-template <typename T>
-void    PmergeMe<T>::insert_good_order()
-{
-    unsigned int current_index = 2;
-    unsigned int previous = 0;
-    unsigned int current_jacob_val = 1;
-    std::vector<long> output;
-    std::vector<std::pair<long, long> > copy;
-    int i;
-
-    if (total_pairs > 0)
-    {
-        this->values.insert(this->values.begin(), std::make_pair(this->values[0].second, -1));
-        copy = this->values;
-        while (current_jacob_val < total_pairs)
-        {
-            output = list_index(current_index, previous, current_jacob_val);
-            i = 0;
-            while (output[i] != -1)
-            {
-                merge_main_chain(copy[output[i]].second, previous + current_jacob_val - 1);
-                i++;
-            }
-        }
-    }
-    if (odd == true)
-        merge_main_chain(straggler, this->values.size());
-}
-
-template <typename T>
-void    PmergeMe<T>::merge_main_chain(long value_to_insert, unsigned int zone)
-{
-    unsigned int pos = 0;
-    unsigned int gap = zone;
-    unsigned int half;
-
-    while (gap > 0)
-    {
-        half = gap / 2;
-        if (value_to_insert < this->values[pos + half].first)
-            gap = half;
-        else
-        {
-            pos += half + 1;
-            gap -= half + 1;
-        }
-    }
-    this->values.insert(this->values.begin() + pos, std::make_pair(value_to_insert, -1L));
-}
-
-template PmergeMe<std::vector<std::pair<long, long> > >::PmergeMe(char **, std::string const);
-template PmergeMe<std::vector<std::pair<long, long> > >::~PmergeMe();
+template class PmergeMe<std::vector<std::pair<long, long> > >;
+template class PmergeMe<std::list<std::pair<long, long> > >;

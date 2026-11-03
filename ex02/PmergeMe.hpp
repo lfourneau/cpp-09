@@ -10,11 +10,12 @@
 # include <utility>
 # include <string>
 # include <cmath>
+# include <sys/time.h>
 
 template <typename T>
 class PmergeMe {
     public:
-        PmergeMe(char **value, std::string const stl);
+        PmergeMe(char **value, std::string const val);
         PmergeMe(const PmergeMe &other);
         PmergeMe &operator=(const PmergeMe &other);
         ~PmergeMe();
@@ -34,18 +35,21 @@ class PmergeMe {
                 std::string problem;
         };
     private:
-        std::string const stl;
+        std::string const type;
         T values;
         std::vector<long> av_to_nb;
         bool odd;
         long straggler;
         unsigned int total_pairs;
+        struct timeval time;
+        struct timeval end_time;
+        void get_time_start();
         void parse_input(char **av);
         void check_validity_numbers(const std::string &val, long& exp);
         void swap(long& one, long& two);
         void add_stl(T &stl);
         void show_sorted(typename T::iterator it, typename T::iterator end);
-        void merge_sort(unsigned int left, unsigned int right, void (PmergeMe<T>::*func)(unsigned int, unsigned int, unsigned int));
+        void merge_sort(unsigned int left, unsigned int right);
         void merge(unsigned int left, unsigned int middle, unsigned int right);
         void sort();
         void insert_good_order();
@@ -54,7 +58,6 @@ class PmergeMe {
         void    merge_main_chain(long value_to_insert, unsigned int zone);
         template <typename U>
         std::pair<long, long> &get_list_iterator(U &list, unsigned int node);
-        void    merge_list(unsigned int left, unsigned int middle, unsigned int right);
 };
 
 #endif
