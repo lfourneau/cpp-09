@@ -76,7 +76,6 @@ class BitcoinExchange
     std::map<double, double>::iterator \
     find_date_database(double date);
     std::string get_date_string(double date);
-    //void find_value_portfolio(std::string const &request);
     double transform_to_double(std::string val);
     void open_file_stream(std::ifstream &val, char const *str);
     bool    isvaliddate(int const &year, int const &month, int const &day);
