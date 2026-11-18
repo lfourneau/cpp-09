@@ -7,6 +7,6 @@ int main(int ac, char **av)
         std::cerr << "Program requires one argument" << std::endl;
         return (1);
     }
-    BitcoinExchange transform_to_map(av + 1);
+    BitcoinExchange transform_to_map(av + 1, "data.csv");
     return (0);
 }

@@ -120,9 +120,9 @@ std::string BitcoinExchange::get_date_string(double val)
     int month;
     int day;
 
-    year = val / (31*12);
-    month = (val - year * 31 * 12) / 31;
-    day = val - year * 31 * 12 - month * 31;
+    year = val / (32*13);
+    month = (val - year * 32 * 13) / 32;
+    day = val - year * 32 * 13 - month * 32;
     output << year << "-" ;
     if (month < 9)
         output << "0";
@@ -173,7 +173,7 @@ void    BitcoinExchange::transform_date(std::string date, double &val)
         throw(InvalidDateFormat(copy_date));
     if (isvaliddate(year, month, day))
         throw(InvalidDateFormat(copy_date));
-    val = day + month * 31 + year * 31 * 12;
+    val = day + month * 32 + year * 32 * 13;
 
 }
 
