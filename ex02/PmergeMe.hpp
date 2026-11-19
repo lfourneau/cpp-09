@@ -10,6 +10,7 @@
 # include <utility>
 # include <string>
 # include <cmath>
+# include <limits>
 # include <sys/time.h>
 
 template <typename T>

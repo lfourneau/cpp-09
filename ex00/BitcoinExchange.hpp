@@ -10,6 +10,7 @@
 # include <fstream>
 # include <ctime>
 # include <algorithm>
+# include <stdlib.h>
 # define BIGGEST_VALUATION 1000
 # define DATABASEREFERENCE "data.csv"
 
@@ -51,6 +52,14 @@ class BitcoinExchange
         virtual const char *what() const throw()
         {
             return "too large a number.";
+        }
+    };
+    class  InvalidReq: public std::exception 
+    {
+        public:
+        virtual const char *what() const throw()
+        {
+            return "format not accepted";
         }
     };
     class  InvalidDateFormat: public std::exception 

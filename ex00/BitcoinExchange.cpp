@@ -80,7 +80,7 @@ void BitcoinExchange::parse_input(char symbol)
         try
         {
             transform_date(date, date_to_double);
-            getline(current_line, value, symbol);
+            getline(current_line, value);
             value_dob = transform_to_double(value);
             if (symbol == '|')
                 check_valid_value(value_dob);
@@ -105,11 +105,17 @@ void BitcoinExchange::parse_input(char symbol)
 
 double BitcoinExchange::transform_to_double(std::string val)
 {
-    std::istringstream str(val);
+    const char *start = val.c_str();
+    char *end;
     double exit_val;
 
-    str >> exit_val; 
-    return (exit_val);
+    exit_val = strtod(start, &end);
+    if (end == start)
+        throw(InvalidReq());
+    std::string rest(end);
+    if (rest.empty() || rest == "f")
+        return (exit_val);
+    throw(InvalidReq());
 }
 
 std::string BitcoinExchange::get_date_string(double val)
@@ -198,6 +204,7 @@ bool    BitcoinExchange::isvaliddate(int const &year, int const &month, int cons
 
 void    BitcoinExchange::check_valid_value(double const &value)
 {
+
     if (value < 0)
     {
         throw (TooLittleNumber());

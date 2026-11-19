@@ -12,14 +12,27 @@ int main(int ac, char **av)
    for (int i = 1; i < ac; i++)
    {
       int j = 0;
+      if (av[i][0] == '\0')
+      {
+         std::cerr << "Error: empty argument" << std::endl;
+         return (2);
+      }
       while (av[i][j])
       {
          if (!std::isdigit(av[i][j]))
          {
-            std::cerr << "Error" << std::endl;
+            std::cerr << "Error: not a positive number: " << av[i] << std::endl;
             return (2);
          }
          j++;
+      }
+      std::istringstream stream(av[i]);
+      long value = 0;
+      stream >> value;
+      if (stream.fail() || value > std::numeric_limits<int>::max())
+      {
+         std::cerr << "Error: value is too big: " << av[i] << std::endl;
+         return (2);
       }
    }
 

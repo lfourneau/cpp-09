@@ -104,6 +104,8 @@ void    PmergeMe<T>::check_validity_numbers(std::string const &val, long& exp)
 {
     std::string::const_iterator it = val.begin();
 
+    if (val.empty())
+        throw(InvalidInputNotNumber(val));
     while (it != val.end())
     {
         if (! std::isdigit(*it))
@@ -112,10 +114,12 @@ void    PmergeMe<T>::check_validity_numbers(std::string const &val, long& exp)
         }
         it++;
     }
-    std::istringstream export_stream(val.c_str());
-    long export_val;
+    std::istringstream export_stream(val);
+    long export_val = 0;
 
     export_stream >> export_val;
+    if (export_stream.fail() || export_val > std::numeric_limits<int>::max())
+        throw(InvalidInputNotNumber("number too big"));
     exp = export_val;
 }
 

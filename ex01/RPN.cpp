@@ -99,5 +99,7 @@ void RPN::calculate(char const &val)
             bellow = std::divides<double>()(bellow, top);
             break;
     }
+    if (bellow == std::numeric_limits<double>::infinity())
+        throw("total superior to double max during exec");
     digits.push_front(bellow);
 }
